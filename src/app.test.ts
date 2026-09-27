@@ -4,6 +4,24 @@ import { createApp } from './app';
 import { UserRepository } from './db/repositories/userRepository';
 import { SessionRepository } from './db/repositories/sessionRepository';
 
+// The admin webhooks module imports index.ts, which starts a separate app.
+// Keep this suite focused on createApp's login wiring and avoid that cycle.
+jest.mock('./routes/adminWebhooks', () => ({
+  createAdminWebhooksRouter: () => jest.requireActual('express').Router(),
+}));
+jest.mock('./routes/offeringSync', () => ({
+  createOfferingSyncRouter: () => jest.requireActual('express').Router(),
+}));
+
+// These modules are referenced by app.ts but are absent from the current tree.
+// They do not participate in login, so provide inert routers and a scheduler.
+jest.mock('./routes/adminAuditLog', () => ({
+  createAdminAuditLogRouter: () => jest.requireActual('express').Router(),
+}), { virtual: true });
+jest.mock('./jobs/auditLogPurgeScheduler', () => ({
+  createAuditLogPurgeScheduler: () => ({ start: jest.fn() }),
+}), { virtual: true });
+
 describe('createApp login repository adapter', () => {
   const password = 'correct-password';
   const passwordHash = createHash('sha256').update(password).digest('hex');
